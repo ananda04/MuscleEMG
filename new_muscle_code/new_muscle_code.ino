@@ -25,6 +25,7 @@ int setCounter(){
 }
 
 // fft algorithm using Cooley-Tukey algorithm
+// implementation is incorrect need to fix this 
 void fft(Complex double *x, int N){
   if (N <= 1) return;
 
