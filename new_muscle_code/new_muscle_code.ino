@@ -2,17 +2,24 @@
 #include <stdio.h>
 #include <math.h>
 #include "CComplex.h"
+#include <SD.h>
+#include <SPI.h>
 
 #define PI 3.14159265358979323846
 
 int set = 0;
 int index = 0;
 
-// int[] zeros;
-// for(int i = 0; i < 600; i++){
-//   zeros[i] = 0;
-// }
+//DFT setup
+long real[6][600];
+long img[6][600];
+long mag[6][600];
 
+//input signal setup
+long arr[6][600];
+
+//SD card set up
+File myFile;
 
 //counts sets and keeps light on during sampling period
 int setCounter(){
@@ -26,29 +33,14 @@ int setCounter(){
 
 // fft algorithm using Cooley-Tukey algorithm
 // implementation is incorrect need to fix this 
-void fft(Complex double *x, int N){
-  if (N <= 1) return;
-
-  complex double *even = malloc(N / 2 * sizeof(complex double));
-  complex double *odd = malloc(N / 2 * sizeof(complex double));
-
-  for (int i = 0; i < N / 2; i++) {
-      even[i] = x[2 * i];
-      odd[i] = x[2 * i + 1];
+void computeDFT(int row){
+  // apply fourier transform to each row 
+  for(int i = 0; i < 600; i++){ // frequency bins
+    for(int j = 0; j<600;j++){ // time sampling
+      float angle = 2 * PI * i * j/600;
+      mag[row][j] = sqrt((arr[i][j] * cos(angle) * arr[i][j] * cos(angle)) + (arr[i][j] * sin(angle) * arr[i][j] * sin(angle)));
+    }
   }
-
-  fft(even, N / 2);
-  fft(odd, N / 2);
-
-  for (int k = 0; k < N / 2; k++) {
-    complex double t = cexp(-I * 2 * PI * k / N) * odd[k];
-    x[k] = even[k] + t;
-    x[k + N / 2] = even[k] - t;
-  }
-
-  free(even);
-  free(odd);
-
 }
 
 
@@ -63,10 +55,6 @@ void setup() {
   pinMode(A5, INPUT);
   pinMode(2, INPUT);
 
-  int** arr = new int*[6];  // Create an array of pointers (one for each row)
-  for (int i = 0; i < 6; i++) {
-    arr[i] = new int[600];  // Allocate memory for each column in the row
-  }
 }
 
 void loop() {
@@ -85,17 +73,35 @@ void loop() {
       }
     }
     else{
-      for(int i = 0;i<600;i++){
-        arr[0][i] = fft(arr[0][i], 600).mag();
-        arr[1][i] = fft(arr[1][i], 600).mag();
-        arr[2][i] = fft(arr[2][i], 600).mag();
-        arr[3][i] = fft(arr[3][i], 600).mag();
-        arr[4][i] = fft(arr[4][i], 600).mag();
-        arr[5][i] = fft(arr[5][i], 600).mag();
+      for(int i =0; i<6;i++){
+        computeDFT(i);
       }
-      
-      // apply fourier transform to each row 
+    
       // store in SD card 
+      myFile = SD.open("test.txt", FILE_WRITE);
+
+      // if the file opened okay, write to it:
+      if (myFile) {
+        for(int i = 0;i<600;i++){
+          myFile.print(mag[0][i]);
+          myFile.print(",");
+          myFile.print(mag[1][i]);
+          myFile.print(",");
+          myFile.print(mag[2][i]);
+          myFile.print(",");
+          myFile.print(mag[3][i]);
+          myFile.print(",");
+          myFile.print(mag[4][i]);
+          myFile.print(",");
+          myFile.println(mag[5][i]);
+        }
+        // close the file:
+        myFile.close();
+        Serial.println("done.");
+      } else {
+        // if the file didn't open, print an error:
+        Serial.println("error opening test.txt");
+      }
       // clear array 
     }
   }
