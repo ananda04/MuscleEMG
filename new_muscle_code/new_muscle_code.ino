@@ -11,12 +11,12 @@ int set = 0;
 int index = 0;
 
 //DFT setup
-long real[6][600];
-long img[6][600];
-long mag[6][600];
+
+
+long* mag[6]; // do not declare here malloc inside loop
 
 //input signal setup
-long arr[6][600];
+long* arr[6];  // do not declare here malloc inside loop
 
 //SD card set up
 File myFile;
@@ -35,12 +35,10 @@ int setCounter(){
 // implementation is incorrect need to fix this 
 void computeDFT(int row){
   // apply fourier transform to each row 
-  for(int i = 0; i < 600; i++){ // frequency bins
     for(int j = 0; j<600;j++){ // time sampling
-      float angle = 2 * PI * i * j/600;
-      mag[row][j] = sqrt((arr[i][j] * cos(angle) * arr[i][j] * cos(angle)) + (arr[i][j] * sin(angle) * arr[i][j] * sin(angle)));
+      float angle = 2 * PI * row * j/600;
+      mag[row][j] = sqrt((arr[row][j] * cos(angle) * arr[row][j] * cos(angle)) + (arr[row][j] * sin(angle) * arr[row][j] * sin(angle)));
     }
-  }
 }
 
 
@@ -54,7 +52,10 @@ void setup() {
   pinMode(A4, INPUT);
   pinMode(A5, INPUT);
   pinMode(2, INPUT);
-
+  for(int i = 0; i<6;i++){
+    arr[i] = (long*) malloc(600*sizeof(long));
+    mag[i] = (long*) malloc(600*sizeof(long));
+  }
 }
 
 void loop() {
@@ -94,6 +95,7 @@ void loop() {
           myFile.print(mag[4][i]);
           myFile.print(",");
           myFile.println(mag[5][i]);
+          myFile.close();
         }
         // close the file:
         myFile.close();
@@ -103,6 +105,24 @@ void loop() {
         Serial.println("error opening test.txt");
       }
       // clear array 
+      myFile = SD.open("test.txt");
+      if (myFile) {
+        Serial.println("test.txt:");
+
+        // read from the file until there's nothing else in it:
+        while (myFile.available()) {
+          Serial.write(myFile.read());
+        }
+        // close the file:
+        myFile.close();
+      } else {
+        // if the file didn't open, print an error:
+        Serial.println("error opening test.txt");
+      }    
+    for(int i = 0; i<6;i++){
+      free(arr[i]); 
+      free(mag[i]);
     }
   }
+}
 }
